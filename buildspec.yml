@@ -1,0 +1,48 @@
+version: 0.2
+
+env:
+  variables:
+    DOTNET_FRAMEWORK: 4.6.2
+    CONFIGURATION: Release
+    TARGET_FRAMEWORK: netcoreapp2.1
+    RUNTIME_IDENTIFIER: linux-x64
+    PROJECT_TO_BUILD: 2048.net.csproj
+    #PROJECT_TO_TEST: Cognito.Lambda.PreTokenGenTrigger/test/Cognito.Lambda.PreTokenGenTrigger.Test/Cognito.Lambda.PreTokenGenTrigger.Tests.csproj
+    #ARTIFACTORY_URL: https://brightmls.jfrog.io/brightmls/api/nuget/bright-nuget-repo
+    UNIT_TEST_RESULTS: UserNameSearch.Lambda/UserNameSearch.Lambda.Tests/TestResults
+    #ARTIFACTORY_MODULE: BrightMls.WebServices.Core
+    PROJECT_FOLDER: 2048.net
+    LAMBDA_PACKAGE_NAME: cognito_lamda.zip
+    #NUSPEC_NAME: BrightMls.WebServices.Core
+    #NUGET_LOCATION: s3://codepipeline-us-east-2-testprodapproach/Tools/nuget.exe
+  #parameter-store:
+  #  ARTIFACTORY_PASSWORD: /CodeBuild/ArtifactoryPassword
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 3.0
+    commands:
+      - export PATH="$PATH:/root/.dotnet/tools"
+      - dotnet tool install -g Amazon.Lambda.Tools
+      # installs trx to junit converter so we can see unit test results in reports
+      - dotnet tool install -g trx2junit
+  build:
+    commands:
+      # create lambda package
+      - dotnet lambda package -c $CONFIGURATION -f $TARGET_FRAMEWORK -pl $PROJECT_FOLDER -o $CODEBUILD_SRC_DIR/lambdaPackage/$LAMBDA_PACKAGE_NAME
+  post_build:
+    commands:
+      # do unit testing
+      #- dotnet test $PROJECT_TO_TEST --logger "trx;logfilename=results.trx"
+    finally:
+      # AWS can only report on JUNIT or Cucumber formatted tests so convert trx to junit
+      #- trx2junit $CODEBUILD_SRC_DIR/$UNIT_TEST_RESULTS/results.trx
+artifacts: 
+  files: 
+    - '**/*' 
+  base-directory: $CODEBUILD_SRC_DIR/lambdaPackage 
+reports:
+  UserNameSearch-Lambda:
+    files:
+      - '$UNIT_TEST_RESULTS/results.xml'
